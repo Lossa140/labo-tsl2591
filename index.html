@@ -205,7 +205,8 @@ canvas{display:block;width:100%;height:auto}
           <div class="verdict" id="verdict2"></div>
         </div>
         <div class="pipe" id="pipeGame" style="grid-template-columns:repeat(3,minmax(0,1fr))"></div>
-        <canvas id="lamCv2" width="900" height="200" hidden aria-label="Animation du photon"></canvas>
+        <div id="noSim" class="expl" style="border-left-color:var(--blue);background:#101C36" hidden><h3>Pas de simulation pour celle-ci</h3>C'est une expérience de pensée : revoyez l'animation de la slide « Étape 3 » (cas « trop loin »).</div>
+        <canvas id="lamCv2" width="900" height="200" style="margin-top:10px;border-radius:12px" hidden aria-label="Animation du photon"></canvas>
       </div>
     </div>
     <p class="kbdhint">Raccourcis : touches 1 à 4 pour choisir la réponse de la salle · Entrée pour révéler · flèche → pour la question suivante.</p>
@@ -452,33 +453,36 @@ $('lamRange').addEventListener('input', e => { lam = Number(e.target.value); upd
 
 // ---------- jeu ----------
 const Q = [
-  { q: "Noir complet. Que lit-on dans CH0 ?", set: { src: 'dark', lux: 0, ir: 0, gain: 9876, tint: 600 },
-    o: ['0 compte', '65 535 comptes', 'Environ 500', 'Impossible à prévoir'], ok: 0,
-    e: "Pas de photon, donc pas de paire électron-trou, donc pas de photocourant : le compteur reste à 0, même avec le gain maximal. En vrai, un minuscule « courant d'obscurité » donne quelques comptes." },
-  { q: "Plein soleil (50 000 lx), gain Max et 600 ms. Que se passe-t-il ?", set: { src: 'sun', lux: 50000, gain: 9876, tint: 600 },
-    o: ['Il mesure 50 000 lx', 'Il sature', 'Il affiche 0', 'Il affiche 9 876 lx'], ok: 1,
-    e: "Avec un gain énorme et un long temps d'intégration, le compteur déborde : il bloque à 65 535. Le capteur ne peut plus dire s'il y a 50 000 ou 100 000 lux." },
-  { q: "Même soleil, mais gain Low et 100 ms ?", set: { src: 'sun', lux: 50000, gain: 1, tint: 100 },
-    o: ['Il sature encore', 'Il mesure environ 50 000 lx', 'Il affiche 0', 'Il affiche 500 lx'], ok: 1,
-    e: "En baissant le gain et le temps, on reste sous le plafond de 36 863 comptes : la mesure redevient correcte. C'est le rôle du gain programmable." },
-  { q: "Pièce sombre (5 lx), gain Low, 100 ms. Que va calculer le microcontrôleur ?", set: { src: 'led', lux: 5, gain: 1, tint: 100 },
-    o: ['Exactement 5 lx', 'Environ 8 lx : imprécis', 'Saturé', '0 lx'], ok: 1,
-    e: "Il n'y a que 2 comptes dans CH0 : chaque compte vaut environ 4 lux. Le résultat tombe à côté. Avec si peu de signal, la mesure manque de finesse." },
-  { q: "Toujours 5 lx, mais on passe au gain Max.", set: { src: 'led', lux: 5, gain: 9876, tint: 100 },
-    o: ['Ça sature', 'Environ 5 lx, précis', '0 lx', '9 876 lx'], ok: 1,
-    e: "Le gain multiplie le signal : on passe de 2 à plus de 16 000 comptes. Le calcul divise ensuite par ce gain, et on retrouve 5 lux avec précision. Gain fort dans le noir, gain faible au soleil." },
-  { q: "Bureau (500 lx), gain Medium. On passe de 100 ms à 200 ms. Que deviennent CH0 et le lux ?", set: { src: 'led', lux: 500, gain: 25, tint: 200 },
-    o: ['CH0 ×2 et lux ×2', 'CH0 ×2, lux identique', 'Rien ne change', 'Ça sature'], ok: 1,
-    e: "Deux fois plus de temps, deux fois plus de charges accumulées : CH0 double. Mais le calcul divise par le temps (dans CPL), donc on retrouve toujours 500 lux." },
-  { q: "On éclaire avec une LED infrarouge seule. Pour l'œil, c'est le noir. Que dit le capteur ?", set: { src: 'ir', ir: 100, lux: 0, gain: 25, tint: 100 },
-    o: ['0 lx', 'Plusieurs centaines de lux', 'Il sature', 'CH0 = 0'], ok: 1,
-    e: "Le silicium voit l'infrarouge. CH1 permet d'en retirer une partie, mais pas tout : le calcul affiche des centaines de lux dans une pièce que l'œil voit noire. C'est la limite « dépend du spectre de la source »." },
-  { q: "Un photon de 1 300 nm arrive sur le silicium.", lam: 1300, set: { src: 'dark', lux: 0, gain: 'auto', tint: 100 },
-    o: ['Il crée une paire électron-trou', 'Il traverse sans effet', 'Il fait saturer le capteur', 'Il double le courant'], ok: 1,
-    e: "E = 1 240 / 1 300 ≈ 0,95 eV, moins que les 1,12 eV nécessaires. Le photon ne peut pas casser de liaison : il traverse. Le silicium ne voit que jusqu'à environ 1,1 µm." },
-  { q: "On passe de 250 lx à 500 lx, même réglage. Le photocourant…", set: { src: 'led', lux: 500, gain: 'auto', tint: 100 },
-    o: ['reste pareil', 'double', 'est divisé par deux', 'devient nul'], ok: 1,
-    e: "Deux fois plus de photons, deux fois plus de paires, deux fois plus de courant : le photocourant est proportionnel à la lumière reçue." },
+  { lvl: 'Facile', q: "Vrai ou faux : le TSL2591 donne directement une valeur en lux.", tag: "Le résultat du capteur", set: { src: 'led', lux: 500, ir: 0, gain: 'auto', tint: 100 },
+    o: ['Vrai', 'Faux'], ok: 1,
+    e: "Faux. Il sort deux nombres bruts, CH0 et CH1. C'est le microcontrôleur du téléphone qui les transforme en lux avec une formule, puis qui règle l'écran." },
+  { lvl: 'Moyen', q: "Lequel de ces photons ne fera PAS réagir le silicium ?", tag: "Limite du silicium : 1,1 µm", lam: 1550,
+    o: ['Ultraviolet, 380 nm', 'Rouge, 650 nm', 'Infrarouge, 950 nm', 'Infrarouge, 1 550 nm'], ok: 3,
+    e: "Seul le 1 550 nm dépasse 1,1 µm : il n'a que 0,8 eV et traverse. Le piège, c'est le 950 nm : il est infrarouge et invisible pour nous, mais encore assez énergétique pour arracher un électron." },
+  { lvl: 'Moyen', q: "Pièce à 5 lux, capteur réglé sur sa sensibilité la plus faible. Le résultat sera…", tag: "Gain minimal ×1 · 5 lx", set: { src: 'led', lux: 5, ir: 0, gain: 1, tint: 100 },
+    o: ['Précis', 'Imprécis', 'Saturé', 'Exactement 0'], ok: 1,
+    e: "Avec si peu de signal, CH0 ne compte que 2 ! Chaque compte vaut environ 4 lux, donc le calcul tombe à côté (environ 8 lux). Il fallait augmenter le gain." },
+  { lvl: 'Moyen', q: "Combien d'octets le microcontrôleur doit-il lire pour récupérer CH0 et CH1 ?", tag: "Registres + bus I²C", set: { src: 'led', lux: 500, ir: 0, gain: 'auto', tint: 100 },
+    o: ['2', '4', '16', '32'], ok: 1,
+    e: "Chaque valeur fait 16 bits, mais un registre ne contient que 8 bits (un octet). Il faut donc 2 octets pour CH0 et 2 pour CH1 : 4 octets, aux adresses 0x14 à 0x17." },
+  { lvl: 'Moyen', q: "La nuit, une caméra éclaire avec des LED infrarouges à 850 nm. Pour nos yeux, la pièce est noire. Combien de lux le téléphone va-t-il calculer ?", tag: "Infrarouge seul · 850 nm", set: { src: 'ir', ir: 100, lux: 0, gain: 25, tint: 100 },
+    o: ['0 lux', 'Quelques lux', 'Plusieurs centaines de lux'], ok: 2,
+    e: "850 nm est sous la limite de 1,1 µm : le silicium réagit fortement. CH1 sert à retirer l'infrarouge, mais pas parfaitement : le calcul trouve environ 790 lux dans une pièce noire pour l'œil." },
+  { lvl: 'Moyen', q: "Un photon est absorbé loin de la zone de déplétion, au fond de la zone P. Que devient l'électron libéré ?", tag: "Expérience de pensée", sim: false,
+    o: ['Il part toujours vers N', 'Il retombe souvent dans un trou : perdu', 'Il sort du capteur'], ok: 1,
+    e: "Loin de la zone, il n'y a pas de champ pour le guider : l'électron erre au hasard et rencontre vite un trou. Ils se recombinent et l'énergie est perdue. Seuls les photons absorbés dans la zone ou juste à côté produisent du courant." },
+  { lvl: 'Difficile', q: "Même lumière, mais on mesure pendant 200 ms au lieu de 100 ms. Le lux calculé…", tag: "Temps d'intégration ×2", set: { src: 'led', lux: 500, ir: 0, gain: 25, tint: 200 },
+    o: ['double', 'reste le même', 'est divisé par 2'], ok: 1,
+    e: "Piège : CH0 double bien (deux fois plus de temps pour accumuler des charges). Mais la formule divise par le temps de mesure : le lux calculé reste à 500. Le temps change la précision, pas le résultat." },
+  { lvl: 'Difficile', q: "Capteur réglé au maximum de sensibilité, puis plein soleil (50 000 lx). Le téléphone affiche…", tag: "Gain ×9 876 · 600 ms · 50 000 lx", set: { src: 'sun', lux: 50000, ir: 0, gain: 9876, tint: 600 },
+    o: ['50 000 lux', 'Une valeur bloquée au maximum', '0 lux', '9 876 lux'], ok: 1,
+    e: "Le compteur est plein : CH0 et CH1 bloquent à 65 535. Le capteur est saturé, comme nos yeux en sortant d'un cinéma, et ne peut plus distinguer 50 000 de 100 000 lux. Il faut baisser le gain." },
+  { lvl: 'Difficile', q: "Dans quel ordre le signal traverse-t-il le capteur ?", tag: "La chaîne d'acquisition", set: { src: 'led', lux: 500, ir: 0, gain: 'auto', tint: 100 },
+    o: ['Photodiodes → ADC → gain → I²C', 'Photodiodes → gain → ADC → registres → I²C', 'Gain → photodiodes → registres → ADC', 'Photodiodes → I²C → ADC → registres'], ok: 1,
+    e: "D'abord la lumière devient un courant (photodiodes), on l'amplifie (gain), on le convertit en nombre (ADC), on le range (registres), et enfin le microcontrôleur le lit (I²C)." },
+  { lvl: 'Difficile', q: "Pourquoi le TSL2591 a-t-il deux photodiodes, CH0 et CH1 ?", tag: "Le choix du capteur", set: { src: 'bulb', lux: 300, ir: 0, gain: 'auto', tint: 100 },
+    o: ['Pour mesurer deux fois plus vite', 'Pour estimer l\'infrarouge et le retirer', 'Au cas où l\'une tombe en panne', 'Pour mesurer la couleur exacte'], ok: 1,
+    e: "CH0 voit le visible et l'infrarouge, CH1 surtout l'infrarouge. En comparant les deux, le calcul retire la part d'infrarouge que l'œil ne voit pas. Mais deux nombres ne suffisent pas pour connaître la couleur exacte." },
 ];
 const game = { i: 0, pick: null, shown: false, score: 0, res: [] , st: { src: 'led', lux: 500, ir: 0, gain: 'auto', tint: 100 } };
 let gameR = compute(game.st);
@@ -488,16 +492,17 @@ function renderQ() {
   $('score').textContent = 'Salle : ' + game.score + ' / ' + Q.length;
   if (game.i >= Q.length) {
     $('qNum').textContent = 'Terminé';
-    $('qBody').innerHTML = `<div class="end"><span class="eyebrow">Score de la salle</span><div class="big">${game.score} / ${Q.length}</div><h2>${game.score >= 7 ? 'Bravo, vous êtes prêts à concevoir un capteur !' : game.score >= 4 ? 'Pas mal du tout !' : 'La physique, ça se mérite !'}</h2><p class="note">Merci de votre attention.</p><button class="btn main" id="restart">Rejouer</button></div>`;
+    $('qBody').innerHTML = `<div class="end"><span class="eyebrow">Score de la salle</span><div class="big">${game.score} / ${Q.length}</div><h2>${game.score >= 8 ? 'Bravo, vous êtes prêts à concevoir un capteur !' : game.score >= 5 ? 'Pas mal du tout !' : 'La physique, ça se mérite !'}</h2><p class="note">Merci de votre attention.</p><button class="btn main" id="restart">Rejouer</button></div>`;
     $('restart').onclick = () => { Object.assign(game, { i: 0, pick: null, shown: false, score: 0, res: [] }); renderQ(); };
     return;
   }
   const q = Q[game.i];
   $('qNum').textContent = `Question ${game.i + 1} / ${Q.length}`;
-  const tags = q.lam ? [`Photon de ${fmt(q.lam)} nm`] : [SRC[q.set.src].name, q.set.src === 'ir' ? 'puissance 100 %' : q.set.src === 'dark' ? '0 lx' : fmt(q.set.lux) + ' lx', 'gain ' + (q.set.gain === 'auto' ? 'auto' : '×' + fmt(q.set.gain)), q.set.tint + ' ms'];
+  const tags = [q.tag];
+  const lvlCol = { Facile: 'ok', Moyen: 'warn', Difficile: 'bad' }[q.lvl];
   $('qBody').innerHTML = `
     <p class="q">${q.q}</p>
-    <div class="qset">${tags.map(t => `<span class="pill">${t}</span>`).join('')}</div>
+    <div class="qset"><span class="pill ${lvlCol}">${q.lvl}</span>${tags.map(t => `<span class="pill">${t}</span>`).join('')}</div>
     <div class="opts">${q.o.map((o, k) => {
       const cls = game.shown ? (k === q.ok ? 'right' : (k === game.pick ? 'wrong' : '')) : '';
       return `<button class="opt ${cls}" data-k="${k}" aria-pressed="${k === game.pick}"><kbd>${'ABCD'[k]}</kbd><span>${o}</span></button>`; }).join('')}</div>
@@ -514,9 +519,11 @@ function reveal() {
   const q = Q[game.i];
   game.shown = true;
   const good = game.pick === q.ok; game.res[game.i] = game.pick === null ? null : good; if (good) game.score++;
-  if (q.lam) { gLam = q.lam; $('stage2').hidden = true; $('lamCv2').hidden = false; }
-  else { $('stage2').hidden = false; $('lamCv2').hidden = true; game.st = { ir: 0, ...q.set }; }
+  const mode = q.sim === false ? 'none' : q.lam ? 'photon' : 'chip';
+  $('stage2').parentElement.hidden = mode !== 'chip'; $('pipeGame').hidden = mode !== 'chip'; $('lamCv2').hidden = mode !== 'photon'; $('noSim').hidden = mode !== 'none';
+  if (mode === 'photon') gLam = q.lam; else if (mode === 'chip') game.st = { ir: 0, ...q.set };
   gameR = compute(game.st);
+  if (mode !== 'chip') { renderQ(); return; }
   $('pipeGame').innerHTML = pipeHTML(game.st, gameR);
   $('verdict2').innerHTML = q.lam ? '' : verdictHTML(game.st, gameR);
   $('pipeGame').querySelectorAll('.blk').forEach(b => b.classList.add('flash'));
@@ -533,7 +540,7 @@ function setTab(g) {
 $('tabLab').onclick = () => setTab(false); $('tabGame').onclick = () => setTab(true);
 document.addEventListener('keydown', e => {
   if ($('viewGame').hidden || e.target.tagName === 'INPUT') return;
-  if (['1', '2', '3', '4'].includes(e.key) && !game.shown && game.i < Q.length) { game.pick = Number(e.key) - 1; renderQ(); }
+  if (['1', '2', '3', '4'].includes(e.key) && !game.shown && game.i < Q.length && Number(e.key) <= Q[game.i].o.length) { game.pick = Number(e.key) - 1; renderQ(); }
   else if (e.key === 'Enter') { e.preventDefault(); game.shown ? nextQ() : reveal(); }
   else if (e.key === 'ArrowRight') nextQ();
 });
