@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Labo TSL2591</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout : un instrument de labo sombre. Bandeau de modes, puis scène animée + chaîne en 6 blocs ; le jeu réutilise la même chaîne. Look sombre assumé (projection). */
+:root{
+  --bg:#0A1020; --panel:#111A2C; --panel2:#17223A; --line:#26344F; --fg:#E9EEF8; --muted:#97A6C0;
+  --amber:#F5A524; --amber-ink:#2A1A00; --ir:#E5486F; --blue:#5B93FF; --ok:#35C48F; --bad:#F26464;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--body);font-size:16px;line-height:1.5;margin:0;padding-inline:clamp(16px,3vw,36px);padding-block:20px 40px}
+.wrap{max-width:1240px;margin:0 auto;display:grid;gap:18px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.top{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+.brand{display:flex;gap:14px;align-items:center}
+.chip{display:inline-grid;place-items:center;width:46px;height:46px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);position:relative}
+.chip i{position:absolute;width:13px;height:13px;border-radius:3px;top:16px}
+.chip i:nth-child(1){left:10px;background:var(--amber)} .chip i:nth-child(2){right:10px;background:var(--ir)}
+.brand h1{font-size:clamp(24px,3vw,34px);font-weight:800}
+.brand p{margin:0;color:var(--muted);font-size:14px}
+.tabs{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:4px}
+.tabs button{border:0;background:transparent;padding:10px 18px;border-radius:999px;font-weight:600;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--amber);color:var(--amber-ink)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px}
+.eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.lab{display:grid;grid-template-columns:320px minmax(0,1fr);gap:18px}
+@media (max-width:900px){.lab{grid-template-columns:1fr}}
+.controls{display:grid;gap:18px;align-content:start}
+.group{display:grid;gap:8px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{border:1px solid var(--line);background:var(--panel2);padding:7px 11px;border-radius:9px;font-size:14px}
+.seg button[aria-pressed="true"]{border-color:var(--amber);background:#3A2A08;color:#FFD48A}
+.big{font-family:var(--display);font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1}
+.big small{font-size:16px;color:var(--muted);font-family:var(--body);font-weight:500}
+input[type=range]{width:100%;accent-color:var(--amber)}
+.presets{display:flex;flex-wrap:wrap;gap:6px}
+.presets button{border:1px dashed var(--line);background:transparent;border-radius:8px;padding:5px 9px;font-size:13px;color:var(--muted)}
+.presets button:hover{color:var(--fg);border-color:var(--muted)}
+.note{font-size:13px;color:var(--muted)}
+.stagebox{position:relative;border-radius:14px;overflow:hidden;background:#070C18;border:1px solid var(--line)}
+canvas{display:block;width:100%;height:auto}
+.verdict{position:absolute;left:14px;top:12px;display:flex;gap:8px;flex-wrap:wrap}
+.pill{font-size:13px;font-weight:600;padding:5px 10px;border-radius:999px;background:var(--panel2);border:1px solid var(--line)}
+.pill.bad{background:#3B1218;border-color:var(--bad);color:#FFB3B3}
+.pill.ok{background:#0F2E24;border-color:var(--ok);color:#9EF0CF}
+.pill.warn{background:#3A2A08;border-color:var(--amber);color:#FFD48A}
+.pipe{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-top:14px}
+@media (max-width:1100px){.pipe{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:560px){.pipe{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.blk{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:6px;align-content:start;min-width:0;position:relative}
+.blk .n{font-family:var(--mono);font-size:12px;color:var(--amber)}
+.blk h3{font-size:16px;font-weight:600;font-family:var(--body)}
+.blk .v{font-family:var(--mono);font-size:15px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.blk .s{font-size:12px;color:var(--muted)}
+.blk.sat{border-color:var(--bad)}
+.blk.flash{animation:fl .6s ease}
+@keyframes fl{0%{box-shadow:0 0 0 0 rgba(245,165,36,.6)}100%{box-shadow:0 0 0 12px rgba(245,165,36,0)}}
+.bar{height:8px;border-radius:6px;background:#0B1324;overflow:hidden;position:relative}
+.bar b{display:block;height:100%;border-radius:6px;background:var(--amber);transition:width .35s}
+.bar.ir b{background:var(--ir)} .bar.full b{background:var(--bad)}
+.bytes{display:grid;grid-template-columns:repeat(2,1fr);gap:4px}
+.bytes span{font-family:var(--mono);font-size:13px;background:#0B1324;border-radius:6px;padding:3px 5px;text-align:center}
+.bytes span em{display:block;font-style:normal;font-size:10px;color:var(--muted)}
+.luxout{font-family:var(--display);font-size:26px;font-weight:800;color:var(--amber);font-variant-numeric:tabular-nums}
+.luxout.badc{color:var(--bad)}
+.row2{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:18px}
+@media (max-width:900px){.row2{grid-template-columns:1fr}}
+.lam{display:grid;gap:10px}
+.lamtop{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.spec{height:14px;border-radius:7px;background:linear-gradient(90deg,#6D28D9 0%,#7C3AED 8%,#2563EB 17%,#16A34A 26%,#EAB308 32%,#F97316 37%,#DC2626 42%,#991B1B 66%,#3F3F46 67%,#27272A 100%);position:relative}
+.spec i{position:absolute;top:-5px;width:3px;height:24px;background:#fff;border-radius:2px;transform:translateX(-1px)}
+.spec u{position:absolute;top:-6px;bottom:-6px;left:66.67%;border-left:2px dashed var(--fg)}
+.speclab{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-family:var(--mono)}
+.formula{font-family:var(--mono);font-size:14px;background:#0B1324;border:1px solid var(--line);border-radius:10px;padding:10px 12px;overflow-x:auto;white-space:nowrap}
+/* jeu */
+.game{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px}
+@media (max-width:980px){.game{grid-template-columns:1fr}}
+.qhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.dots{display:flex;gap:6px}
+.dots span{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.dots span.on{background:var(--amber)} .dots span.okd{background:var(--ok)} .dots span.kod{background:var(--bad)}
+.q{font-family:var(--display);font-size:clamp(24px,2.6vw,34px);font-weight:800;line-height:1.15;margin:12px 0 6px}
+.qset{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:560px){.opts{grid-template-columns:1fr}}
+.opt{display:flex;gap:12px;align-items:center;text-align:left;border:2px solid var(--line);background:var(--panel2);border-radius:14px;padding:14px;font-size:18px;font-weight:500;min-height:72px}
+.opt kbd{font-family:var(--mono);font-size:15px;font-weight:600;display:grid;place-items:center;min-width:34px;height:34px;border-radius:9px;background:#0B1324;border:1px solid var(--line)}
+.opt[aria-pressed="true"]{border-color:var(--blue);background:#13244A}
+.opt.right{border-color:var(--ok);background:#0F2E24}
+.opt.wrong{border-color:var(--bad);background:#3B1218}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.btn{border:0;border-radius:12px;padding:12px 18px;font-weight:600;background:var(--panel2);border:1px solid var(--line)}
+.btn.main{background:var(--amber);color:var(--amber-ink);border-color:var(--amber)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.expl{margin-top:14px;border-left:4px solid var(--ok);background:#0F1F1A;border-radius:10px;padding:12px 14px;line-height:1.55}
+.expl.ko{border-left-color:var(--bad);background:#22121A}
+.expl h3{font-size:18px;margin-bottom:4px}
+.score{font-family:var(--display);font-size:20px;font-weight:800}
+.end{text-align:center;padding:40px 10px;display:grid;gap:12px;justify-items:center}
+.end .big{font-size:64px}
+.foot{font-size:13px;color:var(--muted);line-height:1.6}
+.kbdhint{font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="chip" aria-hidden="true"><i></i><i></i></span>
+      <div><h1>Labo TSL2591</h1><p>De la lumière au lux, en direct</p></div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button id="tabLab" role="tab" aria-selected="true">Laboratoire</button>
+      <button id="tabGame" role="tab" aria-selected="false">Jeu : devinez !</button>
+    </div>
+  </header>
+
+  <!-- ================= LABO ================= -->
+  <section id="viewLab" class="wrap">
+    <div class="lab">
+      <div class="panel controls">
+        <div class="group">
+          <span class="eyebrow">Source de lumière</span>
+          <div class="seg" id="srcSeg"></div>
+        </div>
+        <div class="group" id="luxGroup">
+          <span class="eyebrow" id="luxTitle">Éclairement réel</span>
+          <div class="big" id="luxVal">500 <small>lx</small></div>
+          <input type="range" id="luxRange" min="0" max="1000" step="1" aria-label="Éclairement">
+          <div class="presets" id="presets"></div>
+        </div>
+        <div class="group">
+          <span class="eyebrow">Gain (bloc 2)</span>
+          <div class="seg" id="gainSeg"></div>
+        </div>
+        <div class="group">
+          <span class="eyebrow">Temps d'intégration (bloc 3)</span>
+          <div class="seg" id="tintSeg"></div>
+        </div>
+        <p class="note">Rapports CH1/CH0 : LED blanche et LED IR d'après la fiche technique ; soleil et ampoule : valeurs illustratives. Calcul du lux : bibliothèque Adafruit.</p>
+      </div>
+
+      <div class="panel">
+        <div class="stagebox">
+          <canvas id="stage" width="1200" height="380" aria-label="Animation : la lumière frappe les deux photodiodes, le téléphone règle son écran"></canvas>
+          <div class="verdict" id="verdict"></div>
+        </div>
+        <div class="pipe" id="pipeLab"></div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="panel lam">
+        <div class="lamtop">
+          <div><span class="eyebrow">Mini-labo : un seul photon</span><h2 style="font-size:22px;margin-top:4px">Le silicium va-t-il réagir ?</h2></div>
+          <div class="big" id="lamVal" style="font-size:28px">850 <small>nm</small></div>
+        </div>
+        <input type="range" id="lamRange" min="300" max="1500" step="10" value="850" aria-label="Longueur d'onde du photon">
+        <div class="spec" aria-hidden="true"><i id="lamMark"></i><u></u></div>
+        <div class="speclab"><span>300 nm</span><span>visible</span><span>1 100 nm</span><span>1 500 nm</span></div>
+        <canvas id="lamCv" width="900" height="200" aria-label="Animation d'un photon qui arrive sur le cristal de silicium"></canvas>
+        <div class="formula" id="lamF"></div>
+      </div>
+      <div class="panel">
+        <span class="eyebrow">Le calcul du microcontrôleur (bloc 6)</span>
+        <div class="formula" style="margin-top:10px">CPL = T<sub>int</sub> × G / 408</div>
+        <div class="formula" style="margin-top:8px">lux ≈ (CH0 − CH1) × (1 − CH1/CH0) / CPL</div>
+        <div class="formula" id="calcLive" style="margin-top:8px;white-space:normal"></div>
+        <p class="foot" style="margin-top:12px">Ceci est une simulation pédagogique : les comptes CH0 et CH1 sont calculés à partir de l'éclairement choisi, puis le microcontrôleur refait le calcul inverse. On voit ainsi la saturation (plafond de 36 863 comptes à 100 ms, 65 535 au-delà), la perte de précision quand il y a peu de comptes, et l'erreur due à l'infrarouge.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= JEU ================= -->
+  <section id="viewGame" class="wrap" hidden>
+    <div class="game">
+      <div class="panel" id="qPanel">
+        <div class="qhead">
+          <span class="eyebrow" id="qNum">Question 1 / 9</span>
+          <div class="dots" id="dots"></div>
+          <span class="score" id="score">Salle : 0</span>
+        </div>
+        <div id="qBody"></div>
+      </div>
+      <div class="panel">
+        <span class="eyebrow">L'expérience en direct</span>
+        <div class="stagebox" style="margin-top:10px">
+          <canvas id="stage2" width="1200" height="380" aria-label="Animation de l'expérience"></canvas>
+          <div class="verdict" id="verdict2"></div>
+        </div>
+        <div class="pipe" id="pipeGame" style="grid-template-columns:repeat(3,minmax(0,1fr))"></div>
+        <canvas id="lamCv2" width="900" height="200" hidden aria-label="Animation du photon"></canvas>
+      </div>
+    </div>
+    <p class="kbdhint">Raccourcis : touches 1 à 4 pour choisir la réponse de la salle · Entrée pour révéler · flèche → pour la question suivante.</p>
+  </section>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+const fmt = (n, d = 0) => Number(n).toLocaleString('fr-FR', { maximumFractionDigits: d, minimumFractionDigits: d });
+const hex = n => '0x' + n.toString(16).toUpperCase().padStart(2, '0');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ---------- modèle ----------
+const SRC = {
+  led:   { name: 'LED blanche', r: 0.132, col: '#FFE7A3', vis: true },
+  sun:   { name: 'Soleil', r: 0.25, col: '#FFD36B', vis: true },
+  bulb:  { name: 'Ampoule à filament', r: 0.45, col: '#FFB46B', vis: true },
+  ir:    { name: 'LED infrarouge 850 nm', r: 0.598, col: '#E5486F', vis: false },
+  dark:  { name: 'Noir complet', r: 0, col: '#334', vis: false },
+};
+const GAINS = [['auto', 'Auto'], [1, 'Low ×1'], [25, 'Medium ×25'], [428, 'High ×428'], [9876, 'Max ×9 876']];
+const TINTS = [100, 200, 300, 400, 500, 600];
+const PRESETS = [['Pièce sombre', 5], ['Salon', 100], ['Bureau', 500], ['Jour couvert', 1000], ['Plein jour', 10000], ['Plein soleil', 50000]];
+
+function compute(st) {
+  const S = SRC[st.src], tint = st.tint, max = tint === 100 ? 36863 : 65535;
+  const raw = G => {
+    if (st.src === 'dark') return 0;
+    if (st.src === 'ir') return 300 * st.ir * (G / 25) * (tint / 100);
+    return st.lux * (tint * G / 408) / Math.pow(1 - S.r, 2);
+  };
+  let G = st.gain;
+  if (G === 'auto') { G = 1; for (const g of [9876, 428, 25, 1]) { if (raw(g) < 0.8 * max) { G = g; break; } } }
+  const CPL = tint * G / 408, r0 = raw(G), sat = r0 > max;
+  const ch0 = Math.min(max, Math.round(r0)), ch1 = Math.min(max, Math.round(S.r * r0));
+  const lux = sat ? null : ch0 === 0 ? 0 : (ch0 - ch1) * (1 - ch1 / ch0) / CPL;
+  const truth = S.vis ? st.lux : 0;
+  const drive = st.src === 'ir' ? st.ir * 60 : st.src === 'dark' ? 0 : st.lux; // intensité lumineuse pour l'animation
+  const screen = lux === null ? 100 : Math.max(4, Math.min(100, 8 + 23 * Math.log10(lux + 1)));
+  return { G, CPL, max, sat, ch0, ch1, lux, truth, drive, screen, r: S.r, tint,
+    bytes: [ch0 & 255, ch0 >> 8, ch1 & 255, ch1 >> 8] };
+}
+
+// ---------- état labo ----------
+const lab = { src: 'led', lux: 500, ir: 50, gain: 'auto', tint: 100 };
+const luxFromPos = p => Math.round(Math.pow(10, p / 1000 * 5)) - 1;
+const posFromLux = l => Math.round(Math.log10(l + 1) / 5 * 1000);
+
+function seg(el, items, cur, onPick) {
+  el.innerHTML = items.map(([v, t]) => `<button type="button" data-v="${v}" aria-pressed="${String(v) === String(cur)}">${t}</button>`).join('');
+  el.onclick = e => { const b = e.target.closest('button'); if (b) onPick(b.dataset.v); };
+}
+function drawControls() {
+  seg($('srcSeg'), Object.entries(SRC).map(([k, s]) => [k, s.name]), lab.src, v => { lab.src = v; update(); });
+  seg($('gainSeg'), GAINS, lab.gain, v => { lab.gain = v === 'auto' ? 'auto' : Number(v); update(); });
+  seg($('tintSeg'), TINTS.map(t => [t, t + ' ms']), lab.tint, v => { lab.tint = Number(v); update(); });
+  const isIr = lab.src === 'ir', isDark = lab.src === 'dark';
+  $('luxGroup').hidden = isDark;
+  $('luxTitle').textContent = isIr ? "Puissance de la LED infrarouge" : "Éclairement réel";
+  $('presets').hidden = isIr;
+  if (isIr) { $('luxRange').min = 0; $('luxRange').max = 100; $('luxRange').value = lab.ir; $('luxVal').innerHTML = `${lab.ir} <small>% · invisible pour l'œil</small>`; }
+  else { $('luxRange').min = 0; $('luxRange').max = 1000; $('luxRange').value = posFromLux(lab.lux); $('luxVal').innerHTML = `${fmt(lab.lux)} <small>lx</small>`; }
+}
+$('luxRange').addEventListener('input', e => {
+  if (lab.src === 'ir') lab.ir = Number(e.target.value); else lab.lux = luxFromPos(Number(e.target.value));
+  update();
+});
+$('presets').innerHTML = PRESETS.map(([n, l]) => `<button type="button" data-l="${l}">${n} · ${fmt(l)} lx</button>`).join('');
+$('presets').onclick = e => { const b = e.target.closest('button'); if (b) { lab.lux = Number(b.dataset.l); update(); } };
+
+function pipeHTML(st, R) {
+  const p0 = Math.min(100, R.ch0 / R.max * 100), p1 = Math.min(100, R.ch1 / R.max * 100);
+  const I = R.drive > 0 ? Math.min(100, 12 + 17 * Math.log10(R.drive + 1)) : 0;
+  const luxTxt = R.lux === null ? 'SATURÉ' : fmt(R.lux, R.lux < 20 ? 1 : 0) + ' lx';
+  return `
+  <div class="blk"><span class="n">1 · TRANSDUCTION</span><h3>Photodiodes</h3>
+    <div class="s">Photocourant (∝ lumière)</div><div class="bar"><b style="width:${I}%"></b></div>
+    <div class="s">${R.drive > 0 ? 'Les photons créent des paires électron-trou' : 'Aucun photon : aucun courant'}</div></div>
+  <div class="blk"><span class="n">2 · CONDITIONNEMENT</span><h3>Gain</h3>
+    <div class="v">× ${fmt(R.G)}</div><div class="s">${st.gain === 'auto' ? 'choisi automatiquement' : 'réglé à la main'}</div></div>
+  <div class="blk ${R.sat ? 'sat' : ''}"><span class="n">3 · CONVERSION</span><h3>ADC ${R.tint} ms</h3>
+    <div class="v">CH0 ${fmt(R.ch0)}</div><div class="bar ${R.sat ? 'full' : ''}"><b style="width:${p0}%"></b></div>
+    <div class="v">CH1 ${fmt(R.ch1)}</div><div class="bar ir"><b style="width:${p1}%"></b></div>
+    <div class="s">plafond : ${fmt(R.max)} comptes</div></div>
+  <div class="blk"><span class="n">4 · STOCKAGE</span><h3>Registres</h3>
+    <div class="bytes"><span><em>0x14</em>${hex(R.bytes[0])}</span><span><em>0x15</em>${hex(R.bytes[1])}</span><span><em>0x16</em>${hex(R.bytes[2])}</span><span><em>0x17</em>${hex(R.bytes[3])}</span></div></div>
+  <div class="blk"><span class="n">5 · COMMUNICATION</span><h3>Bus I²C</h3>
+    <div class="v" style="font-size:13px">${R.bytes.map(hex).join(' ')}</div><div class="s">adresse 0x29 · SDA + SCL</div></div>
+  <div class="blk ${R.sat ? 'sat' : ''}"><span class="n">6 · EXPLOITATION</span><h3>Lux calculé</h3>
+    <div class="luxout ${R.sat ? 'badc' : ''}">${luxTxt}</div><div class="s">réel : ${fmt(R.truth)} lx</div></div>`;
+}
+function verdictHTML(st, R) {
+  const out = [];
+  if (R.sat) out.push('<span class="pill bad">Saturé : réduire gain ou temps</span>');
+  else if (st.src === 'dark') out.push('<span class="pill">Aucun photon</span>');
+  else if (R.ch0 > 0 && R.ch0 < 50) out.push('<span class="pill warn">Très peu de comptes : mesure imprécise</span>');
+  if (!R.sat && R.lux !== null && R.truth === 0 && R.lux > 1) out.push('<span class="pill bad">L\'œil voit le noir, le calcul voit des lux</span>');
+  if (!R.sat && R.truth > 0 && R.ch0 >= 50) {
+    const err = Math.abs(R.lux - R.truth) / R.truth;
+    out.push(err < 0.05 ? '<span class="pill ok">Mesure correcte</span>' : '<span class="pill warn">Écart de ' + fmt(err * 100) + ' %</span>');
+  }
+  return out.join('');
+}
+function calcLine(R) {
+  if (R.sat) return 'CH0 a atteint le plafond : le calcul est impossible (dépassement).';
+  if (R.ch0 === 0) return 'CH0 = 0 → lux = 0';
+  return `CPL = ${R.tint} × ${fmt(R.G)} / 408 = ${fmt(R.CPL, 3)}<br>lux = (${fmt(R.ch0)} − ${fmt(R.ch1)}) × (1 − ${fmt(R.ch1 / R.ch0, 3)}) / ${fmt(R.CPL, 3)} = <b>${fmt(R.lux, 1)} lx</b>`;
+}
+
+let labR = compute(lab);
+function update() {
+  labR = compute(lab);
+  drawControls();
+  $('pipeLab').innerHTML = pipeHTML(lab, labR);
+  $('verdict').innerHTML = verdictHTML(lab, labR);
+  $('calcLive').innerHTML = calcLine(labR);
+}
+
+// ---------- scène animée ----------
+function makeStage(cv, getState) {
+  const ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+  const parts = [];
+  let t = 0;
+  function frame() {
+    const { st, R } = getState();
+    t++;
+    ctx.fillStyle = '#070C18'; ctx.fillRect(0, 0, W, H);
+    const S = SRC[st.src];
+    // source
+    const sx = 140, sy = H / 2;
+    const glow = R.drive > 0 ? Math.min(1, Math.log10(R.drive + 1) / 5) : 0;
+    if (glow > 0) {
+      const g = ctx.createRadialGradient(sx, sy, 10, sx, sy, 60 + 90 * glow);
+      g.addColorStop(0, S.col); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, 60 + 90 * glow, 0, 7); ctx.fill();
+    }
+    ctx.fillStyle = glow > 0 ? S.col : '#1D2740'; ctx.beginPath(); ctx.arc(sx, sy, 34, 0, 7); ctx.fill();
+    ctx.fillStyle = '#97A6C0'; ctx.font = '600 20px "IBM Plex Sans",sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(S.name, sx, sy + 70);
+    // photons
+    const rate = R.drive > 0 ? Math.min(1.1, 0.08 + 0.2 * Math.log10(R.drive + 1)) : 0;
+    if (!reduce) { let n = rate; while (n > 0) { if (Math.random() < n) parts.push({ x: sx + 30, y: sy + (Math.random() - .5) * 120, v: 5 + Math.random() * 3, ir: !S.vis || Math.random() < S.r * 0.6 }); n--; } }
+    const cx = 560, cy = H / 2;
+    for (let i = parts.length - 1; i >= 0; i--) {
+      const p = parts[i]; p.x += p.v; p.y += (cy - p.y) * 0.02;
+      ctx.strokeStyle = p.ir ? '#E5486F' : '#F5A524'; ctx.lineWidth = 3; ctx.beginPath();
+      for (let k = 0; k < 14; k++) { const xx = p.x - k * 2.2; const yy = p.y + Math.sin((xx + t * 4) / 5) * 5; k ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy); }
+      ctx.stroke();
+      if (p.x > cx - 70) parts.splice(i, 1);
+    }
+    if (reduce && rate > 0) { ctx.fillStyle = S.col; ctx.fillText('lumière →', 330, cy + 6); }
+    // puce
+    ctx.fillStyle = '#111A2C'; ctx.strokeStyle = '#3A4A6A'; ctx.lineWidth = 2;
+    roundRect(ctx, cx - 75, cy - 95, 190, 190, 14); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#E9EEF8'; ctx.font = '700 20px "IBM Plex Sans",sans-serif'; ctx.fillText('TSL2591', cx + 20, cy - 62);
+    const a0 = Math.sqrt(R.ch0 / R.max), a1 = Math.sqrt(R.ch1 / R.max);
+    pd(ctx, cx - 55, cy - 40, 70, 70, '#F5A524', a0, 'CH0', R.sat && t % 30 < 15);
+    pd(ctx, cx + 25, cy - 40, 70, 70, '#E5486F', a1, 'CH1', false);
+    ctx.fillStyle = '#97A6C0'; ctx.font = '500 15px "IBM Plex Mono",monospace';
+    ctx.fillText('CH0 ' + fmt(R.ch0), cx + 20, cy + 60); ctx.fillText('CH1 ' + fmt(R.ch1), cx + 20, cy + 80);
+    // fil I2C
+    const px = 900;
+    ctx.strokeStyle = '#3A4A6A'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx + 115, cy); ctx.lineTo(px - 60, cy); ctx.stroke();
+    if (!reduce && R.ch0 > 0) { const k = (t * 3) % (px - 60 - (cx + 115)); ctx.fillStyle = '#5B93FF'; ctx.fillRect(cx + 115 + k, cy - 5, 16, 10); }
+    ctx.fillStyle = '#97A6C0'; ctx.font = '500 14px "IBM Plex Mono",monospace'; ctx.fillText('I²C', (cx + 115 + px - 60) / 2, cy - 14);
+    // téléphone
+    ctx.fillStyle = '#1B2438'; roundRect(ctx, px - 60, cy - 140, 150, 280, 24); ctx.fill();
+    const b = R.screen / 100;
+    const lv = Math.round(20 + 225 * b);
+    ctx.fillStyle = `rgb(${lv},${lv},${Math.min(255, lv + 6)})`; roundRect(ctx, px - 48, cy - 120, 126, 240, 12); ctx.fill();
+    ctx.fillStyle = b > 0.55 ? '#0A1020' : '#E9EEF8'; ctx.font = '800 26px "Bricolage Grotesque",sans-serif';
+    ctx.fillText(R.lux === null ? 'MAX' : fmt(R.lux, R.lux < 20 ? 1 : 0), px + 15, cy - 10);
+    ctx.font = '500 15px "IBM Plex Sans",sans-serif'; ctx.fillText('lux calculés', px + 15, cy + 14);
+    ctx.fillText('écran ' + fmt(R.screen) + ' %', px + 15, cy + 90);
+    ctx.fillStyle = '#97A6C0'; ctx.fillText('téléphone', px + 15, cy + 162);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+function pd(ctx, x, y, w, h, col, a, lab, blink) {
+  ctx.fillStyle = '#0B1324'; ctx.fillRect(x, y, w, h);
+  ctx.globalAlpha = 0.15 + 0.85 * Math.min(1, a); ctx.fillStyle = blink ? '#F26464' : col; ctx.fillRect(x, y, w, h); ctx.globalAlpha = 1;
+  ctx.fillStyle = '#0A1020'; ctx.font = '700 16px "IBM Plex Sans",sans-serif'; ctx.fillText(lab, x + w / 2, y + h / 2 + 6);
+}
+function roundRect(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
+// ---------- mini-labo photon ----------
+function makeLam(cv, getL) {
+  const ctx = cv.getContext('2d'), W = cv.width, H = cv.height;
+  let x = 0, phase = 0, last = null;
+  function frame() {
+    const l = getL(), E = 1240 / l, ok = l <= 1100;
+    if (l !== last) { x = 0; phase = 0; last = l; }
+    ctx.fillStyle = '#070C18'; ctx.fillRect(0, 0, W, H);
+    const bx = 430;
+    // cristal
+    ctx.fillStyle = '#E9EEF8'; ctx.fillRect(bx, 20, W - bx - 20, H - 40);
+    for (let i = 0; i < 5; i++) for (let j = 0; j < 3; j++) {
+      const ax = bx + 45 + i * 85, ay = 50 + j * 50;
+      ctx.strokeStyle = '#B9C4D6'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax + 85, ay); ctx.stroke();
+      ctx.fillStyle = '#D5DCE8'; ctx.beginPath(); ctx.arc(ax, ay, 15, 0, 7); ctx.fill(); ctx.strokeStyle = '#94A3B8'; ctx.stroke();
+      ctx.fillStyle = '#475569'; ctx.font = '600 12px "IBM Plex Sans",sans-serif'; ctx.textAlign = 'center'; ctx.fillText('Si', ax, ay + 4);
+      ctx.fillStyle = '#1E40AF'; ctx.beginPath(); ctx.arc(ax + 42, ay - 4, 3.5, 0, 7); ctx.fill(); ctx.beginPath(); ctx.arc(ax + 42, ay + 4, 3.5, 0, 7); ctx.fill();
+    }
+    const hitX = bx + 45 + 1 * 85 + 42, hy = 96;
+    const col = l < 400 ? '#8B5CF6' : l <= 700 ? '#F5A524' : '#E5486F';
+    if (reduce) { x = ok ? hitX : W; phase = ok ? 60 : 0; }
+    else if (phase === 0) { x += 6; if (ok && x >= hitX) { phase = 1; } if (!ok && x > W + 40) x = 0; }
+    else { phase++; if (phase > 140) { x = 0; phase = 0; } }
+    if (phase === 0) {
+      ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.beginPath();
+      const wl = Math.max(3, l / 90);
+      for (let k = 0; k < 40; k++) { const xx = x - k * 2.5; const yy = hy + Math.sin(xx / wl) * 9; k ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy); }
+      ctx.stroke();
+    } else {
+      const k = Math.min(1, phase / 30);
+      ctx.fillStyle = 'rgba(245,165,36,' + (1 - k) * 0.6 + ')'; ctx.beginPath(); ctx.arc(hitX, hy, 30 * k + 6, 0, 7); ctx.fill();
+      ctx.fillStyle = '#E9EEF8'; ctx.beginPath(); ctx.arc(hitX, hy - 4, 5, 0, 7); ctx.fill();
+      ctx.strokeStyle = '#E5486F'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(hitX, hy - 4, 9, 0, 7); ctx.stroke();
+      ctx.fillStyle = '#E5486F'; ctx.font = '700 12px sans-serif'; ctx.fillText('+', hitX, hy);
+      const ex = hitX + 60 * k, ey = hy - 4 - 30 * k;
+      ctx.fillStyle = '#2563EB'; ctx.beginPath(); ctx.arc(ex, ey, 11, 0, 7); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.font = '700 14px sans-serif'; ctx.fillText('−', ex, ey + 5);
+    }
+    ctx.textAlign = 'left'; ctx.font = '600 17px "IBM Plex Sans",sans-serif';
+    ctx.fillStyle = ok ? '#35C48F' : '#F26464';
+    ctx.fillText(ok ? 'Assez d\'énergie :' : 'Pas assez d\'énergie :', 16, 40); ctx.fillText(ok ? 'paire électron-trou' : 'il traverse', 16, 62);
+    ctx.fillStyle = '#97A6C0'; ctx.font = '500 16px "IBM Plex Mono",monospace';
+    ctx.fillText('E = ' + fmt(E, 2) + ' eV', 16, 110); ctx.fillText('seuil 1,12 eV', 16, 136);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+let lam = 850;
+function updLam() {
+  $('lamVal').innerHTML = `${fmt(lam)} <small>nm</small>`;
+  $('lamMark').style.left = ((lam - 300) / 1200 * 100) + '%';
+  const E = 1240 / lam;
+  $('lamF').textContent = `E = 1 240 / ${fmt(lam)} nm = ${fmt(E, 2)} eV  ${E >= 1.12 ? '≥' : '<'} 1,12 eV  →  ${E >= 1.12 ? 'absorbé' : 'traverse'}`;
+}
+$('lamRange').addEventListener('input', e => { lam = Number(e.target.value); updLam(); });
+
+// ---------- jeu ----------
+const Q = [
+  { q: "Noir complet. Que lit-on dans CH0 ?", set: { src: 'dark', lux: 0, ir: 0, gain: 9876, tint: 600 },
+    o: ['0 compte', '65 535 comptes', 'Environ 500', 'Impossible à prévoir'], ok: 0,
+    e: "Pas de photon, donc pas de paire électron-trou, donc pas de photocourant : le compteur reste à 0, même avec le gain maximal. En vrai, un minuscule « courant d'obscurité » donne quelques comptes." },
+  { q: "Plein soleil (50 000 lx), gain Max et 600 ms. Que se passe-t-il ?", set: { src: 'sun', lux: 50000, gain: 9876, tint: 600 },
+    o: ['Il mesure 50 000 lx', 'Il sature', 'Il affiche 0', 'Il affiche 9 876 lx'], ok: 1,
+    e: "Avec un gain énorme et un long temps d'intégration, le compteur déborde : il bloque à 65 535. Le capteur ne peut plus dire s'il y a 50 000 ou 100 000 lux." },
+  { q: "Même soleil, mais gain Low et 100 ms ?", set: { src: 'sun', lux: 50000, gain: 1, tint: 100 },
+    o: ['Il sature encore', 'Il mesure environ 50 000 lx', 'Il affiche 0', 'Il affiche 500 lx'], ok: 1,
+    e: "En baissant le gain et le temps, on reste sous le plafond de 36 863 comptes : la mesure redevient correcte. C'est le rôle du gain programmable." },
+  { q: "Pièce sombre (5 lx), gain Low, 100 ms. Que va calculer le microcontrôleur ?", set: { src: 'led', lux: 5, gain: 1, tint: 100 },
+    o: ['Exactement 5 lx', 'Environ 8 lx : imprécis', 'Saturé', '0 lx'], ok: 1,
+    e: "Il n'y a que 2 comptes dans CH0 : chaque compte vaut environ 4 lux. Le résultat tombe à côté. Avec si peu de signal, la mesure manque de finesse." },
+  { q: "Toujours 5 lx, mais on passe au gain Max.", set: { src: 'led', lux: 5, gain: 9876, tint: 100 },
+    o: ['Ça sature', 'Environ 5 lx, précis', '0 lx', '9 876 lx'], ok: 1,
+    e: "Le gain multiplie le signal : on passe de 2 à plus de 16 000 comptes. Le calcul divise ensuite par ce gain, et on retrouve 5 lux avec précision. Gain fort dans le noir, gain faible au soleil." },
+  { q: "Bureau (500 lx), gain Medium. On passe de 100 ms à 200 ms. Que deviennent CH0 et le lux ?", set: { src: 'led', lux: 500, gain: 25, tint: 200 },
+    o: ['CH0 ×2 et lux ×2', 'CH0 ×2, lux identique', 'Rien ne change', 'Ça sature'], ok: 1,
+    e: "Deux fois plus de temps, deux fois plus de charges accumulées : CH0 double. Mais le calcul divise par le temps (dans CPL), donc on retrouve toujours 500 lux." },
+  { q: "On éclaire avec une LED infrarouge seule. Pour l'œil, c'est le noir. Que dit le capteur ?", set: { src: 'ir', ir: 100, lux: 0, gain: 25, tint: 100 },
+    o: ['0 lx', 'Plusieurs centaines de lux', 'Il sature', 'CH0 = 0'], ok: 1,
+    e: "Le silicium voit l'infrarouge. CH1 permet d'en retirer une partie, mais pas tout : le calcul affiche des centaines de lux dans une pièce que l'œil voit noire. C'est la limite « dépend du spectre de la source »." },
+  { q: "Un photon de 1 300 nm arrive sur le silicium.", lam: 1300, set: { src: 'dark', lux: 0, gain: 'auto', tint: 100 },
+    o: ['Il crée une paire électron-trou', 'Il traverse sans effet', 'Il fait saturer le capteur', 'Il double le courant'], ok: 1,
+    e: "E = 1 240 / 1 300 ≈ 0,95 eV, moins que les 1,12 eV nécessaires. Le photon ne peut pas casser de liaison : il traverse. Le silicium ne voit que jusqu'à environ 1,1 µm." },
+  { q: "On passe de 250 lx à 500 lx, même réglage. Le photocourant…", set: { src: 'led', lux: 500, gain: 'auto', tint: 100 },
+    o: ['reste pareil', 'double', 'est divisé par deux', 'devient nul'], ok: 1,
+    e: "Deux fois plus de photons, deux fois plus de paires, deux fois plus de courant : le photocourant est proportionnel à la lumière reçue." },
+];
+const game = { i: 0, pick: null, shown: false, score: 0, res: [] , st: { src: 'led', lux: 500, ir: 0, gain: 'auto', tint: 100 } };
+let gameR = compute(game.st);
+
+function renderQ() {
+  $('dots').innerHTML = Q.map((_, k) => `<span class="${k === game.i ? 'on' : game.res[k] === true ? 'okd' : game.res[k] === false ? 'kod' : ''}"></span>`).join('');
+  $('score').textContent = 'Salle : ' + game.score + ' / ' + Q.length;
+  if (game.i >= Q.length) {
+    $('qNum').textContent = 'Terminé';
+    $('qBody').innerHTML = `<div class="end"><span class="eyebrow">Score de la salle</span><div class="big">${game.score} / ${Q.length}</div><h2>${game.score >= 7 ? 'Bravo, vous êtes prêts à concevoir un capteur !' : game.score >= 4 ? 'Pas mal du tout !' : 'La physique, ça se mérite !'}</h2><p class="note">Merci de votre attention.</p><button class="btn main" id="restart">Rejouer</button></div>`;
+    $('restart').onclick = () => { Object.assign(game, { i: 0, pick: null, shown: false, score: 0, res: [] }); renderQ(); };
+    return;
+  }
+  const q = Q[game.i];
+  $('qNum').textContent = `Question ${game.i + 1} / ${Q.length}`;
+  const tags = q.lam ? [`Photon de ${fmt(q.lam)} nm`] : [SRC[q.set.src].name, q.set.src === 'ir' ? 'puissance 100 %' : q.set.src === 'dark' ? '0 lx' : fmt(q.set.lux) + ' lx', 'gain ' + (q.set.gain === 'auto' ? 'auto' : '×' + fmt(q.set.gain)), q.set.tint + ' ms'];
+  $('qBody').innerHTML = `
+    <p class="q">${q.q}</p>
+    <div class="qset">${tags.map(t => `<span class="pill">${t}</span>`).join('')}</div>
+    <div class="opts">${q.o.map((o, k) => {
+      const cls = game.shown ? (k === q.ok ? 'right' : (k === game.pick ? 'wrong' : '')) : '';
+      return `<button class="opt ${cls}" data-k="${k}" aria-pressed="${k === game.pick}"><kbd>${'ABCD'[k]}</kbd><span>${o}</span></button>`; }).join('')}</div>
+    <div class="actions">
+      <button class="btn main" id="reveal" ${game.shown ? 'disabled' : ''}>Lancer l'expérience</button>
+      <button class="btn" id="nextQ" ${game.shown ? '' : 'disabled'}>Question suivante →</button>
+    </div>
+    ${game.shown ? `<div class="expl ${game.pick === q.ok || game.pick === null ? '' : 'ko'}"><h3>${game.pick === null ? 'Réponse : ' + 'ABCD'[q.ok] : game.pick === q.ok ? 'Bonne réponse !' : 'Raté : c\'était ' + 'ABCD'[q.ok]}</h3>${q.e}</div>` : ''}`;
+  $('qBody').querySelector('.opts').onclick = e => { const b = e.target.closest('.opt'); if (b && !game.shown) { game.pick = Number(b.dataset.k); renderQ(); } };
+  $('reveal').onclick = reveal; $('nextQ').onclick = nextQ;
+}
+function reveal() {
+  if (game.i >= Q.length || game.shown) return;
+  const q = Q[game.i];
+  game.shown = true;
+  const good = game.pick === q.ok; game.res[game.i] = game.pick === null ? null : good; if (good) game.score++;
+  if (q.lam) { gLam = q.lam; $('stage2').hidden = true; $('lamCv2').hidden = false; }
+  else { $('stage2').hidden = false; $('lamCv2').hidden = true; game.st = { ir: 0, ...q.set }; }
+  gameR = compute(game.st);
+  $('pipeGame').innerHTML = pipeHTML(game.st, gameR);
+  $('verdict2').innerHTML = q.lam ? '' : verdictHTML(game.st, gameR);
+  $('pipeGame').querySelectorAll('.blk').forEach(b => b.classList.add('flash'));
+  renderQ();
+}
+function nextQ() { if (!game.shown) return; game.i++; game.pick = null; game.shown = false; renderQ(); }
+let gLam = 850;
+
+// ---------- onglets + clavier ----------
+function setTab(g) {
+  $('tabLab').setAttribute('aria-selected', String(!g)); $('tabGame').setAttribute('aria-selected', String(g));
+  $('viewLab').hidden = g; $('viewGame').hidden = !g;
+}
+$('tabLab').onclick = () => setTab(false); $('tabGame').onclick = () => setTab(true);
+document.addEventListener('keydown', e => {
+  if ($('viewGame').hidden || e.target.tagName === 'INPUT') return;
+  if (['1', '2', '3', '4'].includes(e.key) && !game.shown && game.i < Q.length) { game.pick = Number(e.key) - 1; renderQ(); }
+  else if (e.key === 'Enter') { e.preventDefault(); game.shown ? nextQ() : reveal(); }
+  else if (e.key === 'ArrowRight') nextQ();
+});
+if (location.hash === '#jeu') setTab(true);
+
+// ---------- démarrage ----------
+update(); updLam();
+$('pipeGame').innerHTML = pipeHTML(game.st, gameR);
+$('verdict2').innerHTML = verdictHTML(game.st, gameR);
+renderQ();
+makeStage($('stage'), () => ({ st: lab, R: labR }));
+makeStage($('stage2'), () => ({ st: game.st, R: gameR }));
+makeLam($('lamCv'), () => lam);
+makeLam($('lamCv2'), () => gLam);
+})();
+</script>
+
+</body>
+</html>
